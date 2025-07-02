@@ -1,9 +1,9 @@
-name: Update ZEE5 Cookie Token
+name: Update ZEE5 Cookie Token (All Channels)
 
 on:
   schedule:
-    - cron: "*/10 * * * *"  # Runs every 10 minutes
-  workflow_dispatch:       # Manual trigger option
+    - cron: "*/10 * * * *"  # Every 10 minutes
+  workflow_dispatch:
 
 jobs:
   update-cookie:
@@ -16,29 +16,28 @@ jobs:
       - name: Install curl
         run: sudo apt-get install -y curl
 
-      - name: Fetch new hdntl token from secret URL
+      - name: Fetch new ZEE5 hdntl token
         id: fetch_token
         env:
           Z5_SECRET_URL: ${{ secrets.Z5_SECRET_URL }}
         run: |
-          echo "🔐 Fetching token from secret URL..."
+          echo "🔐 Fetching token..."
           TOKEN=$(curl -s -L -v "$Z5_SECRET_URL" 2>&1 | awk '/< location:/ {print $3; exit}' | grep -o 'hdntl=[^&]*')
-          echo "✅ New token fetched: $TOKEN"
+          echo "✅ Token fetched: $TOKEN"
           echo "TOKEN=$TOKEN" >> $GITHUB_ENV
 
-      - name: Replace old token in channels.json
+      - name: Replace all old hdntl tokens in channels.json
         run: |
-          echo "🔄 Updating channels.json..."
-          OLD=$(grep -o 'hdntl=[^"]*' channels.json | head -n 1)
-          echo "Replacing $OLD with $TOKEN"
-          sed -i "s|$OLD|$TOKEN|g" channels.json
+          echo "🔄 Replacing all hdntl= tokens in channels.json..."
+          sed -i -E "s|hdntl=[^&\"']*|$TOKEN|g" channels.json
+          echo "✅ All tokens updated."
 
       - name: Commit and push changes
         run: |
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
           git add channels.json
-          git commit -m "🔄 Auto-update ZEE5 token" || echo "⚠️ No changes to commit"
+          git commit -m "🔁 Auto-update all ZEE5 channel tokens" || echo "⚠️ No changes to commit"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
