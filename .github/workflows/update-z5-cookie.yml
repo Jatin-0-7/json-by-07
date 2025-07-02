@@ -1,0 +1,44 @@
+name: Update ZEE5 Cookie
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"  # Runs every 10 mins
+  workflow_dispatch:
+
+jobs:
+  update-cookie:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: sudo apt-get install -y curl
+
+      - name: Fetch new ZEE5 hdntl cookie
+        id: fetch_cookie
+        run: |
+          echo "Fetching token..."
+          TOKEN=$(curl -s -L -v "$Z5_SECRET_URL" 2>&1 | grep -i '< location:' | head -n 1 | sed 's/< location: //I' | grep -o 'hdntl=[^&]*')
+          echo "TOKEN=$TOKEN" >> $GITHUB_ENV
+
+      - name: Update channels.json with new cookie
+        run: |
+          echo "Updating JSON file..."
+          OLD=$(grep -o 'hdntl=[^"]*' channels.json | head -n 1)
+          echo "Replacing $OLD with $TOKEN"
+          sed -i "s|$OLD|$TOKEN|g" channels.json
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+          git add channels.json
+          git commit -m "🔄 Update ZEE5 cookie token" || echo "No changes to commit"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    env:
+      Z5_SECRET_URL: ${{ secrets.Z5_SECRET_URL }}
